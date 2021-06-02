@@ -134,16 +134,6 @@ static void virtual_filter_destroy(void *data)
 	}
 }
 
-static void virtual_filter_update(void* data, obs_data_t* settings)
-{
-	virtual_filter_data *filter = (virtual_filter_data *)data;
-	bool keep_ratio = obs_data_get_bool(settings, S_RATIO);
-	filter->delay = (int)obs_data_get_int(settings, S_DELAY);
-	filter->mode = (int)obs_data_get_int(settings, S_TARGET);
-	filter->flip = obs_data_get_bool(settings, S_FLIP);
-	shared_queue_set_keep_ratio(&filter->video_queue, keep_ratio);	
-}
-
 static void virtual_filter_render(void* data, gs_effect_t* effect)
 {
 	virtual_filter_data *filter = (virtual_filter_data *)data;
@@ -151,8 +141,7 @@ static void virtual_filter_render(void* data, gs_effect_t* effect)
 	UNUSED_PARAMETER(effect);
 }
 
-static bool virtual_filter_start(obs_properties_t *props, obs_property_t *p,
-	void *data)
+static bool virtual_filter_start(obs_properties_t *props, void *data)
 {
 	virtual_filter_data* filter = (virtual_filter_data*)data;
 	obs_source_t* target = obs_filter_get_target(filter->context);
@@ -180,7 +169,7 @@ static bool virtual_filter_start(obs_properties_t *props, obs_property_t *p,
 
 	if (filter->active) {
 		obs_property_t *stop = obs_properties_get(props, S_STOP);
-		obs_property_set_visible(p, false);
+		// obs_property_set_visible(p, false);
 		obs_property_set_visible(stop, true);
 		shared_queue_set_delay(&filter->video_queue, filter->delay);
 		obs_add_tick_callback(virtual_filter_video, data);
@@ -208,6 +197,20 @@ static bool virtual_filter_stop(obs_properties_t *props, obs_property_t *p,
 	return true;
 }
 
+static void virtual_filter_update(void* data, obs_data_t* settings)
+{
+	virtual_filter_data *filter = (virtual_filter_data *)data;
+	bool keep_ratio = obs_data_get_bool(settings, S_RATIO);
+	filter->delay = (int)obs_data_get_int(settings, S_DELAY);
+	filter->mode = (int)obs_data_get_int(settings, S_TARGET);
+	filter->flip = obs_data_get_bool(settings, S_FLIP);
+	shared_queue_set_keep_ratio(&filter->video_queue, keep_ratio);
+
+	// Croo -- added this code to auto start the virtual cam
+	obs_properties_t *props = obs_properties_create();
+	virtual_filter_start(props, data);
+}
+
 static obs_properties_t *virtual_filter_properties(void *data)
 {
 	virtual_filter_data *filter = (virtual_filter_data*)data;
@@ -225,13 +228,13 @@ static obs_properties_t *virtual_filter_properties(void *data)
 	obs_properties_add_bool(props, S_FLIP, T_FLIP);
 	obs_properties_add_bool(props, S_RATIO, T_RATIO);
 
-	start = obs_properties_add_button(props, S_START, T_START, 
+	/* start = obs_properties_add_button(props, S_START, T_START, 
 		virtual_filter_start);
 	stop = obs_properties_add_button(props, S_STOP, T_STOP, 
 		virtual_filter_stop);
 
 	obs_property_set_visible(start, !filter->active);
-	obs_property_set_visible(stop, filter->active);
+	obs_property_set_visible(stop, filter->active); */
 
 	return props;
 }
@@ -239,6 +242,7 @@ static obs_properties_t *virtual_filter_properties(void *data)
 static void virtual_filter_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, S_DELAY, 1);
+	obs_data_set_default_bool(settings, S_RATIO, true);
 }
 
 struct obs_source_info create_filter_info()
